@@ -14,7 +14,7 @@ def generate_launch_description():
 
     pub_period_arg = DeclareLaunchArgument(
         'pub_period',
-        default_value='0.3',
+        default_value='1.0',
         description='Period of published messages'
     )
     

@@ -3,9 +3,14 @@ from rclpy.node import Node
 from zat_games.quiz_config import quiz_questions
 from zat_ros2_msgs.msg import GameEntry, GameAnswer
 
+
+GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
+GAME_STATES_SYMB = {GAME_STATES[key]: key for key in GAME_STATES}
+
+
 def msg2json_game(msg):
     json_data = {
-        'state': msg.state,
+        'state': GAME_STATES[msg.state],
         'questionsNum': msg.questions_total,
         'questionId': msg.id,
         'question': msg.question,
@@ -18,9 +23,10 @@ def msg2json_game(msg):
 
     return json_data
 
+
 def json2msg_game(json_data):
     msg = GameEntry()
-    msg.state = json_data['state']
+    msg.state = GAME_STATES_SYMB[json_data['state']]
     msg.questions_total = json_data['questionsNum']
     msg.id = json_data['questionId']
     msg.question = json_data['question']
@@ -33,6 +39,7 @@ def json2msg_game(json_data):
     
     return msg
 
+
 class UserManager():
     def __init__(self, config):
         self._quiz_questions = config
@@ -40,22 +47,27 @@ class UserManager():
         self._collected_points = 0
         self._total_points = len(config)
         self._q_id = 0
+        self._ready = False
 
-    def update(self, answer):
-        if answer == 'correct':
+    def update(self, q_id, answer):
+        if q_id == self._q_id and answer == 'correct' and not self._ready:
+            self._ready = True
             self._collected_points += 1
     
     def fetch_entry(self):
-        question = self._game_questions[self._q_id]['question']
-        answers = self._game_questions[self._q_id]['answers']
+        question = self._quiz_questions[self._q_id]['question']
+        answers = self._quiz_questions[self._q_id]['answers']
+        q_id = self._q_id
         
-        if self._q_id < self._questions_num:
+        if self._q_id < self._questions_num-1 and self._ready:
             self._q_id += 1
+            self._ready = False
 
         else:
             self._q_id += 0
+            self._ready = False
 
-        return self._q_id-1, question, answers, \
+        return q_id, question, answers, \
                self._collected_points, self._total_points, \
                self._questions_num
 
@@ -65,13 +77,11 @@ class LanguageLearning(Node):
             self, 
             in_game_topic: str = '/language_learning/game/gui/state',
             out_game_topic: str = '/language_learning/game/controller/state',
-            pub_period: float = 0.2):
+            pub_period: float = 1.0):
          
         super().__init__('pose_estimator')
 
         self._user_manager = UserManager(config=quiz_questions)
-
-        self._game_states = ['IDLE', 'PENDING', 'STOP']
 
         self.declare_parameters(
             namespace='',
@@ -97,14 +107,15 @@ class LanguageLearning(Node):
 
     def _game_gui_callback(self, msg):
         json_data = msg2json_game(msg)
-        self._user_manager.update(json_data['answer'])
+        self._user_manager.update(json_data['questionId'], json_data['answer'])
+        self.get_logger().info(f"received answer: {json_data['answer']}")
     
     def _publish_game_status(self):
         q_id, question, answers, points, \
         total_points, questions_num = self._user_manager.fetch_entry()
         
         json_data = {
-            'state': self._game_states[1],
+            'state': GAME_STATES[2],
             'questionsNum': questions_num,
             'questionId': q_id,
             'question': question,
@@ -115,7 +126,10 @@ class LanguageLearning(Node):
         }
 
         msg = json2msg_game(json_data)
-        self._publish_game_status.pub(msg)
+        self._game_status_publisher.publish(msg)
+
+        self.get_logger().info(f"published question {json_data['questionId']}: {json_data['question']}")
+        self.get_logger().info(f"game state {json_data['state']}")
 
 
 def main():
@@ -124,7 +138,7 @@ def main():
     language_game_node = LanguageLearning(
         in_game_topic = '/language_learning/game/gui/state',
         out_game_topic = '/language_learning/game/controller/state',
-        pub_period = 0.2)
+        pub_period = 1.0)
     
     rclpy.spin(language_game_node)
     language_game_node.destroy_node()
