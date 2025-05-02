@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from zat_games.quiz_config import quiz_questions
-from zat_ros2_msgs.msg import GameEntry, GameAnswer
+from zat_ros2_msgs.msg import GameEntry, GameAnswer, GameEntryResult
 
 
 GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
@@ -40,6 +40,21 @@ def json2msg_game(json_data):
     return msg
 
 
+def msg2json_game_result(msg):
+    json_data = {
+        'questionId': msg.id,
+        'answer': msg.answer,
+    }
+    return json_data
+
+
+def json2msg_game_result(json_data):
+    msg = GameEntryResult()
+    msg.id = json_data['questionId']
+    msg.answer = json_data['answer']    
+    return msg
+
+
 class UserManager():
     def __init__(self, config):
         self._quiz_questions = config
@@ -49,8 +64,10 @@ class UserManager():
         self._q_id = 0
         self._ready = False
 
-    def update(self, q_id, answer):
-        if q_id == self._q_id and answer == 'correct' and not self._ready:
+    def update(self, data):
+        if data['questionId'] == self._q_id and \
+            data['answer'] == 'correct' and not self._ready:
+            
             self._ready = True
             self._collected_points += 1
     
@@ -100,15 +117,15 @@ class LanguageLearning(Node):
         # timer
         self._timer = self.create_timer(pub_period, self._publish_game_status)
         # game gui info subscriber
-        self._game_gui_subscriber = self.create_subscription(GameEntry, 
+        self._game_gui_subscriber = self.create_subscription(GameEntryResult, 
                                                              in_game_topic, 
                                                              self._game_gui_callback, 
                                                              10)
 
     def _game_gui_callback(self, msg):
-        json_data = msg2json_game(msg)
-        self._user_manager.update(json_data['questionId'], json_data['answer'])
-        self.get_logger().info(f"received answer: {json_data['answer']}")
+        json_data = msg2json_game_result(msg)
+        self._user_manager.update(json_data)
+        self.get_logger().info(f"received answer: {json_data}")
     
     def _publish_game_status(self):
         q_id, question, answers, points, \
