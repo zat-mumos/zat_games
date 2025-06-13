@@ -153,9 +153,9 @@ def main():
     rclpy.init(args=None)
     
     language_game_node = LanguageLearning(
-        in_game_topic = '/language_learning/game/gui/state',
-        out_game_topic = '/language_learning/game/controller/state',
-        pub_period = 1.0)
+        in_game_topic='/language_learning/game/gui/state',
+        out_game_topic='/language_learning/game/controller/state',
+        pub_period=1.0)
     
     rclpy.spin(language_game_node)
     language_game_node.destroy_node()
