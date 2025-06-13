@@ -71,12 +71,12 @@ class UserManager():
 
         if data['questionId'] == self._q_id and not self._ready:
             self._ready = True
-            
-            if data['answer'] == 'correct':
-                self._collected_points += 1
 
             if self._q_id < self._questions_num-1:
                 self._q_id += 1
+
+                if data['answer'] == 'correct':
+                    self._collected_points += 1
 
             else:
                 self._game_state = GAME_STATES[3]
@@ -128,7 +128,6 @@ class LanguageLearning(Node):
     def _game_gui_callback(self, msg):
         json_data = msg2json_game_result(msg)
         self._user_manager.update(json_data)
-        self.get_logger().info(f"received answer: {json_data}", throttle_duration_sec=1.0)
     
     def _publish_game_status(self):
         q_id, question, answers, points, \
@@ -148,7 +147,6 @@ class LanguageLearning(Node):
         msg = json2msg_game(json_data)
         self._game_status_publisher.publish(msg)
 
-        self.get_logger().info(f"published question {json_data['questionId']}: {json_data['question']}", throttle_duration_sec=5.0)
         self.get_logger().info(f"game state {json_data['state']}", throttle_duration_sec=5.0)
 
 
