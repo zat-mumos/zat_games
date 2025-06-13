@@ -61,32 +61,35 @@ class UserManager():
         self._questions_num = len(config)
         self._collected_points = 0
         self._total_points = len(config)
-        self._q_id = 0
+        self._game_state = GAME_STATES[2]
+        self._q_id = -1
         self._ready = False
 
     def update(self, data):
-        if data['questionId'] == self._q_id and \
-            data['answer'] == 'correct' and not self._ready:
-            
+        if data['questionId'] == -1:
+            self._q_id = 0
+
+        if data['questionId'] == self._q_id and not self._ready:
             self._ready = True
-            self._collected_points += 1
+            
+            if data['answer'] == 'correct':
+                self._collected_points += 1
+
+            if self._q_id < self._questions_num-1:
+                self._q_id += 1
+
+            else:
+                self._game_state = GAME_STATES[3]
     
     def fetch_entry(self):
         question = self._quiz_questions[self._q_id]['question']
         answers = self._quiz_questions[self._q_id]['answers']
-        q_id = self._q_id
         
-        if self._q_id < self._questions_num-1 and self._ready:
-            self._q_id += 1
-            self._ready = False
+        self._ready = False
 
-        else:
-            self._q_id += 0
-            self._ready = False
-
-        return q_id, question, answers, \
+        return self._q_id, question, answers, \
                self._collected_points, self._total_points, \
-               self._questions_num
+               self._questions_num, self._game_state
 
 
 class LanguageLearning(Node):
@@ -125,14 +128,14 @@ class LanguageLearning(Node):
     def _game_gui_callback(self, msg):
         json_data = msg2json_game_result(msg)
         self._user_manager.update(json_data)
-        #self.get_logger().info(f"received answer: {json_data}", throttle_duration_sec=5.0)
+        self.get_logger().info(f"received answer: {json_data}", throttle_duration_sec=1.0)
     
     def _publish_game_status(self):
         q_id, question, answers, points, \
-        total_points, questions_num = self._user_manager.fetch_entry()
+        total_points, questions_num, game_state = self._user_manager.fetch_entry()
         
         json_data = {
-            'state': GAME_STATES[2],
+            'state': game_state,
             'questionsNum': questions_num,
             'questionId': q_id,
             'question': question,
