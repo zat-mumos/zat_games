@@ -44,6 +44,7 @@ def msg2json_game_result(msg):
     json_data = {
         'questionId': msg.id,
         'answer': msg.answer,
+        'state': GAME_STATES[msg.state]
     }
     return json_data
 
@@ -51,7 +52,8 @@ def msg2json_game_result(msg):
 def json2msg_game_result(json_data):
     msg = GameEntryResult()
     msg.id = json_data['questionId']
-    msg.answer = json_data['answer']    
+    msg.answer = json_data['answer']
+    msg.state = GAME_STATES_SYMB[json_data['state']] 
     return msg
 
 
@@ -61,11 +63,20 @@ class UserManager():
         self._questions_num = len(config)
         self._collected_points = 0
         self._total_points = len(config)
-        self._game_state = GAME_STATES[2]
+        self._game_state = GAME_STATES[1]
         self._q_id = -1
         self._ready = False
 
     def update(self, data):
+        if data['state'] in GAME_STATES_SYMB:
+            self._game_state = data['state']
+
+            if self._game_state == 'IDLE':
+                self._q_id = 0
+                self._collected_points = 0
+                self._ready = True
+                return
+
         if data['questionId'] == -1:
             self._q_id = 0
 
