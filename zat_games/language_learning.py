@@ -77,24 +77,30 @@ class UserManager():
                 self._ready = True
                 return
 
-        if data['questionId'] == -1:
-            self._q_id = 0
+            if self._game_state == 'PENDING':
+                if data['questionId'] == -1:
+                    self._q_id = 0
 
-        if data['questionId'] == self._q_id and not self._ready:
-            self._ready = True
+                if self._q_id >= self._questions_num-1:
+                    self._game_state = GAME_STATES[3]
 
-            if self._q_id < self._questions_num-1:
-                self._q_id += 1
+                if data['questionId'] == self._q_id and not self._ready:
+                    self._ready = True
 
-                if data['answer'] == 'correct':
-                    self._collected_points += 1
+                    if self._q_id <= self._questions_num-1:
+                        self._q_id += 1
 
-            else:
-                self._game_state = GAME_STATES[3]
+                    if data['answer'] == 'correct':
+                        self._collected_points += 1
     
     def fetch_entry(self):
-        question = self._quiz_questions[self._q_id]['question']
-        answers = self._quiz_questions[self._q_id]['answers']
+        if self._q_id > self._questions_num-1:
+            question = ""
+            answers = []
+
+        else:
+            question = self._quiz_questions[self._q_id]['question']
+            answers = self._quiz_questions[self._q_id]['answers']
         
         self._ready = False
 
