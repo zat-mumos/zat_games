@@ -1,7 +1,9 @@
 import rclpy
 from rclpy.node import Node
 from zat_games.quiz_config import quiz_questions
+from zat_ros2_msgs.srv import RagLanguageGame
 from zat_ros2_msgs.msg import GameEntry, GameAnswer, GameEntryResult
+from std_msgs.msg import String
 
 
 GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
@@ -114,21 +116,32 @@ class LanguageLearning(Node):
             self, 
             in_game_topic: str = '/language_learning/game/gui/state',
             out_game_topic: str = '/language_learning/game/controller/state',
+            out_topic='/qt_robot/speech/say',
+            rag_service='/language_learning/rag/feedback',
             pub_period: float = 1.0):
          
         super().__init__('pose_estimator')
 
         self._user_manager = UserManager(config=quiz_questions)
+        self._game_gui_status = None
+        self._game_controller_state = None
+        self._game_gui_id = None
+        self._game_controller_id = None
+        # self._server_response = str(any)
 
         self.declare_parameters(
             namespace='',
             parameters = [
                 ('in_game_topic', in_game_topic),
+                ('rag_service', rag_service),
+                ('out_topic', out_topic),
                 ('pub_period', pub_period)
             ])
         
         in_game_topic = self.get_parameter('in_game_topic').value
         pub_period = self.get_parameter('pub_period').value
+        rag_service = self.get_parameter('rag_service').value
+        out_topic = self.get_parameter('out_topic').value
         
         # game control publisher
         self._game_status_publisher = self.create_publisher(GameEntry, 
@@ -141,11 +154,28 @@ class LanguageLearning(Node):
                                                              in_game_topic, 
                                                              self._game_gui_callback, 
                                                              10)
+        # response publisher
+        self._server_response_publisher = self.create_publisher(String,
+                                                                out_topic,
+                                                                10)
+        # Client node to access the server        
+        self._client = self.create_client(RagLanguageGame, rag_service)
+        while not self._client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().warning('RAG service server not available. Retrying to connect ...')
+
+        self.req = RagLanguageGame.Request()
 
     def _game_gui_callback(self, msg):
         json_data = msg2json_game_result(msg)
         self._user_manager.update(json_data)
-    
+        
+        self._game_gui_status = msg
+        # Update the request object
+        self._game_gui_id = msg.id
+        self.req.student_answer_type = msg.answer
+        # send request to the server
+        self._send_request()
+
     def _publish_game_status(self):
         q_id, question, answers, points, \
         total_points, questions_num, game_state = self._user_manager.fetch_entry()
@@ -162,17 +192,55 @@ class LanguageLearning(Node):
         }
 
         msg = json2msg_game(json_data)
+
         self._game_status_publisher.publish(msg)
 
+        self._game_controller_state = msg
         self.get_logger().info(f"game state {json_data['state']}", throttle_duration_sec=5.0)
+        self._game_controller_id = msg.id
+        # Update the request object
+        self.req.id = msg.id
+        self.req.question = msg.question
+        self.req.available_answers = msg.answers
 
+    def _send_request(self):
+        """Checks for the conditions before sending a request to the server."""
+        if self._game_gui_status is None:
+            return
+        
+        if self._game_controller_state is None:
+            return
+        
+        if self._game_controller_id != self._game_gui_status.id:
+            return
+        
+        self._game_gui_status = None
+        self._game_controller_state = None
+        self.future = self._client.call_async(self.req)
+        self.future.add_done_callback(self._handle_response)
 
+    def _handle_response(self, future):
+        """To handle the output from the server and publish it."""
+        response = future.result()
+        result = response.content
+        if not result:
+            return
+        
+        if result == "Invalid request":
+            return
+        
+        msg = String()
+        msg.data = result
+        self._server_response_publisher.publish(msg)
+        
 def main():
     rclpy.init(args=None)
     
     language_game_node = LanguageLearning(
         in_game_topic='/language_learning/game/gui/state',
         out_game_topic='/language_learning/game/controller/state',
+        rag_service='/language_learning/rag/feedback', 
+        out_topic='/qt_robot/speech/say',
         pub_period=1.0)
     
     rclpy.spin(language_game_node)
