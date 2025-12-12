@@ -1,4 +1,3 @@
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -10,7 +9,7 @@ def generate_launch_description():
         'game_gui_topic',
         default_value='/language_learning/game/gui/state',
         description='Game gui topic'
-    )
+ )
 
     pub_period_arg = DeclareLaunchArgument(
         'pub_period',

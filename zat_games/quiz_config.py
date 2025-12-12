@@ -1,3 +1,5 @@
+"""Python file which includes a list of quiz questions used for language learning."""
+
 quiz_questions = [{
       "question": "____   heißen Sie?",
       "answers": [
