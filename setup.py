@@ -20,6 +20,7 @@ setup(
     description='Package for games controllers',
     license='MIT',
     tests_require=['pytest'],
+    test_suite='test',
     entry_points={
         'console_scripts': [
             'language_learning=zat_games.language_learning:main'

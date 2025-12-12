@@ -1,0 +1,54 @@
+image: rwthika/ros2-ml:humble-desktop-full-tf2.18.0-torch2.5.0
+
+before_script:
+  - apt-get update && apt-get install -y
+
+stages:
+  - dependencies
+  - formatting
+  - typing
+  - docs
+  - build and test
+
+python:
+  stage: dependencies
+  script:
+    - rosdep update
+    - mkdir -p zat_ws/src
+    - mv -n zat_games zat_ws/src/
+    - rosdep install --from-paths zat_ws/src --ignore-src -y
+
+lint:
+  stage: formatting
+  script:
+    - pip install docformatter
+    - pip install ruff
+    - python -m docformatter --recursive --in-place --wrap-summaries 100 --wrap-descriptions 100 test launch zat_games
+    - python -m ruff check
+
+mypy:
+  stage: typing
+  script:
+    - pip install mypy
+    - python -m mypy --install-types --non-interactive --ignore-missing-imports test/ zat_games/
+
+docstr:
+  stage: docs
+  script:
+    - pip install docstr-coverage
+    - docstr-coverage test/ zat_games/ --skip-private --skip-magic
+
+colcon:
+  stage: build and test
+  script:
+    - source /opt/ros/${ROS_DISTRO}/setup.bash
+    - cd ..
+    - rm -rf zat_ros2_msgs
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@git.inf.h-brs.de/zat-rhein-ruhr/zat-prototype-demo/zat_ros2_msgs.git
+    - mkdir -p zat_ws/src
+    - mv -n zat_games zat_ws/src/
+    - mv -n zat_ros2_msgs zat_ws/src/
+    - cd zat_ws
+    - colcon build
+    - source install/setup.bash
+    - colcon test --packages-select zat_games --event-handlers console_direct+  --pytest-args="-v" 

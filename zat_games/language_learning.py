@@ -1,3 +1,4 @@
+"""ROS2 node implementation for the language learning game."""
 import rclpy
 from rclpy.node import Node
 from zat_games.quiz_config import quiz_questions
@@ -11,6 +12,7 @@ GAME_STATES_SYMB = {GAME_STATES[key]: key for key in GAME_STATES}
 
 
 def msg2json_game(msg):
+    """Convert the message to JSON format."""
     json_data = {
         'state': GAME_STATES[msg.state],
         'questionsNum': msg.questions_total,
@@ -27,6 +29,7 @@ def msg2json_game(msg):
 
 
 def json2msg_game(json_data):
+    """Convert the JSON message to GameEntry message format."""
     msg = GameEntry()
     msg.state = GAME_STATES_SYMB[json_data['state']]
     msg.questions_total = json_data['questionsNum']
@@ -43,6 +46,7 @@ def json2msg_game(json_data):
 
 
 def msg2json_game_result(msg):
+    """Convert the message to JSON format."""
     json_data = {
         'questionId': msg.id,
         'answer': msg.answer,
@@ -52,6 +56,7 @@ def msg2json_game_result(msg):
 
 
 def json2msg_game_result(json_data):
+    """Convert the JSON message to GameEntryResult message format."""
     msg = GameEntryResult()
     msg.id = json_data['questionId']
     msg.answer = json_data['answer']
@@ -60,7 +65,9 @@ def json2msg_game_result(json_data):
 
 
 class UserManager():
+    """Manage quiz game state and track user answers from the UI."""
     def __init__(self, config):
+        """Initialize the UserManager class."""
         self._quiz_questions = config
         self._questions_num = len(config)
         self._collected_points = 0
@@ -70,6 +77,7 @@ class UserManager():
         self._ready = False
 
     def update(self, data):
+        """Update the game state."""
         if data['state'] in GAME_STATES_SYMB:
             self._game_state = data['state']
 
@@ -96,6 +104,7 @@ class UserManager():
                         self._collected_points += 1
     
     def fetch_entry(self):
+        """Retrieve  the current question and answers in the game."""
         if self._q_id > self._questions_num-1:
             question = ""
             answers = []
@@ -112,6 +121,7 @@ class UserManager():
 
 
 class LanguageLearning(Node):
+    """A ROS 2 node that manages the language learning game workflow."""
     def __init__(
             self, 
             in_game_topic: str = '/language_learning/game/gui/state',
@@ -119,9 +129,8 @@ class LanguageLearning(Node):
             out_topic='/qt_robot/speech/say',
             rag_service='/language_learning/rag/feedback',
             pub_period: float = 1.0):
-         
+        """Initialize the LanguageLearning class."""
         super().__init__('pose_estimator')
-
         self._user_manager = UserManager(config=quiz_questions)
         self._game_gui_status = None
         self._game_controller_state = None
@@ -204,7 +213,7 @@ class LanguageLearning(Node):
         self.req.available_answers = msg.answers
 
     def _send_request(self):
-        """Checks for the conditions before sending a request to the server."""
+        """Check for the conditions before sending a request to the server."""
         if self._game_gui_status is None:
             return
         
@@ -220,7 +229,7 @@ class LanguageLearning(Node):
         self.future.add_done_callback(self._handle_response)
 
     def _handle_response(self, future):
-        """To handle the output from the server and publish it."""
+        """Handle the output from the server and publish it."""
         response = future.result()
         result = response.content
         if not result:
@@ -234,8 +243,8 @@ class LanguageLearning(Node):
         self._server_response_publisher.publish(msg)
         
 def main():
+    """Run the LanguageLearning Node."""
     rclpy.init(args=None)
-    
     language_game_node = LanguageLearning(
         in_game_topic='/language_learning/game/gui/state',
         out_game_topic='/language_learning/game/controller/state',
