@@ -1,6 +1,6 @@
 """Python file which includes a list of quiz questions used for language learning."""
 
-quiz_questions = [{
+quiz_questions_A = [{
       "question": "____   heißen Sie?",
       "answers": [
           {
@@ -51,6 +51,43 @@ quiz_questions = [{
           }
       ]
   },
+  {
+      "question": "Ich ____ aus Deutschland.",
+      "answers": [
+          {
+              "type": "correct",
+              "content": "komme"
+          },
+          {
+              "type": "wrong1",
+              "content": "gehe"
+          },
+          {
+              "type": "wrong2",
+              "content": "trinke"
+          }
+      ]
+  },
+  {
+      "question": "Mein Vorname ____ Thomas.",
+      "answers": [
+          {
+              "type": "correct",
+              "content": "ist"
+          },
+          {
+              "type": "wrong1",
+              "content": "heißt"
+          },
+          {
+              "type": "wrong2",
+              "content": "isst"
+          }
+      ]
+  }
+]
+
+quiz_questions_B = [
   {
       "question": "Ich ____ aus Deutschland.",
       "answers": [
