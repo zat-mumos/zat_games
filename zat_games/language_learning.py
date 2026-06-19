@@ -1,11 +1,10 @@
 """ROS2 node implementation for the language learning game."""
 import rclpy
 from rclpy.node import Node
-from zat_games.quiz_config import quiz_questions_A, quiz_questions_B
+from zat_games.quiz_config import quiz_question_lists
 from zat_ros2_msgs.srv import RagLanguageGame
 from zat_ros2_msgs.msg import GameEntry, GameAnswer, GameEntryResult
 from std_msgs.msg import String
-import time
 
 
 GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
@@ -25,6 +24,7 @@ def msg2json_game(msg):
         'answer': msg.answer,
         'result': msg.result,
         'totalResult': msg.result_final,
+        'questionLists': msg.question_lists,
         'selectedQuestionList': msg.selected_question_list
     }
 
@@ -45,6 +45,7 @@ def json2msg_game(json_data):
     msg.result = json_data['result']
     msg.result_final = json_data['totalResult']
     msg.selected_question_list = json_data['selectedQuestionList']
+    msg.question_lists = json_data['questionLists']
     return msg
 
 
@@ -71,12 +72,10 @@ def json2msg_game_result(json_data):
 
 class UserManager():
     """Manage quiz game state and track user answers from the UI."""
-    def __init__(self, config_a, config_b):
+    def __init__(self, config):
         """Initialize the UserManager class."""
-        self._questions_a = config_a
-        self._questions_b = config_b
-        self._questions_a_num = len(config_a)
-        self._questions_b_num = len(config_b)
+        self._list_of_questions = config
+        self._questions_num = 0
         self._quiz_questions = []
         self._questions_num = 0
         self._collected_points = 0
@@ -85,6 +84,7 @@ class UserManager():
         self._q_id = -1
         self._ready = False
         self._selected_question_list = ""
+        self._question_lists = config.keys()
 
     def update(self, data):
         """Update the game state."""
@@ -120,17 +120,11 @@ class UserManager():
     
     def fetch_entry(self):
         """Retrieve  the current question and answers in the game."""
-        if self._selected_question_list == "A":
-            self._quiz_questions = self._questions_a
-            self._questions_num = self._questions_a_num
-            self._total_points = self._questions_a_num
-
-        elif self._selected_question_list == "B":
-            self._quiz_questions = self._questions_b
-            self._questions_num = self._questions_b_num
-            self._total_points = self._questions_b_num
         
         if self._selected_question_list:
+            self._quiz_questions = self._list_of_questions[self._selected_question_list]
+            self._questions_num = len(self._quiz_questions)
+            self._total_points = len(self._quiz_questions)
 
             if self._q_id > self._questions_num-1:
                 question = ""
@@ -148,7 +142,9 @@ class UserManager():
 
         return self._q_id, question, answers, \
                self._collected_points, self._total_points, \
-               self._questions_num, self._game_state, self._quiz_questions, self._selected_question_list
+               self._questions_num, self._game_state, \
+               self._quiz_questions, self._selected_question_list, \
+               self._question_lists
 
 
 class LanguageLearning(Node):
@@ -162,7 +158,7 @@ class LanguageLearning(Node):
             pub_period: float = 1.0):
         """Initialize the LanguageLearning class."""
         super().__init__('language_learning')
-        self._user_manager = UserManager(quiz_questions_A, quiz_questions_B)
+        self._user_manager = UserManager(quiz_question_lists)
         self._selected_question_list = ""
         self._game_gui_status = None
         self._game_controller_state = None
@@ -223,11 +219,11 @@ class LanguageLearning(Node):
     def _publish_game_status(self):
         if  self.waiting_for_llm_response:
             self.get_logger().info("Waiting for LLM response", 
-                               throttle_duration_sec=2.0)
+                                   throttle_duration_sec=2.0)
             return
     
         q_id, question, answers, points, \
-        total_points, questions_num, game_state, question_list, selected_question_list = self._user_manager.fetch_entry()
+        total_points, questions_num, game_state, question_list, selected_question_list, list_of_all_questions = self._user_manager.fetch_entry()
         
         json_data = {
             'state': game_state,
@@ -238,8 +234,8 @@ class LanguageLearning(Node):
             'answer': '',
             'result': points,
             'totalResult': total_points,
-            'question_list' : question_list,
-            'selectedQuestionList' : selected_question_list
+            'selectedQuestionList' : selected_question_list,
+            'questionLists': list_of_all_questions
         }
 
         msg = json2msg_game(json_data)
