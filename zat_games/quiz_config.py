@@ -87,7 +87,6 @@ quiz_question_lists = {
         ]
     }
     ],
-
     "quiz_questions_b": [
     {
         "question": "Ich ____ aus Deutschland.",
