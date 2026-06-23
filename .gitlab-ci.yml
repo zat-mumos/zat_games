@@ -21,7 +21,7 @@ python:
 lint:
   stage: formatting
   script:
-    - pip install docformatter
+    - pip install docformatter==1.7.6
     - pip install ruff
     - python -m docformatter --recursive --in-place --wrap-summaries 100 --wrap-descriptions 100 test launch zat_games
     - python -m ruff check
