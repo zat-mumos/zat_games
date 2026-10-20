@@ -1,12 +1,38 @@
-"""Unit tests for the LanguageLearning ROS2 node."""
+# © 2026 Hochschule Bonn-Rhein-Sieg <https://www.h-brs.de/>
+# 
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by the 
+# Free Software Foundation, either version 3 of the License, or (at your 
+# option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General 
+# Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along 
+# with this program. If not, see <https://www.gnu.org/licenses/>.
+"""Unit tests for the LanguageLearning ROS2 node.
 
-from zat_games.language_learning import LanguageLearning, json2msg_game, msg2json_game_result, msg2json_game, json2msg_game_result
+Author:
+    Oviya Rajavel <oviya.rajavel.inf.h-brs.de>
+    Michal Stolarz <michal.stolarz@h-brs.de>
+"""
 from types import SimpleNamespace
-from zat_ros2_msgs.msg import GameAnswer, GameEntry 
 from unittest.mock import MagicMock, patch
-from std_msgs.msg import String
-import rclpy
+
 import pytest
+import rclpy
+from std_msgs.msg import String
+from zat_ros2_msgs.msg import GameAnswer, GameEntry
+
+from zat_games.language_learning import (
+    LanguageLearning,
+    json2msg_game,
+    json2msg_game_result,
+    msg2json_game,
+    msg2json_game_result,
+)
 
 GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
 GAME_STATES_SYMB = {GAME_STATES[key]: key for key in GAME_STATES}
