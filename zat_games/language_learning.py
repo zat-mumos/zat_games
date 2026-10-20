@@ -1,11 +1,60 @@
-"""ROS2 node implementation for the language learning game."""
+# © 2026 Hochschule Bonn-Rhein-Sieg <https://www.h-brs.de/>
+# 
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by the 
+# Free Software Foundation, either version 3 of the License, or (at your 
+# option) any later version.
+
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General 
+# Public License for more details.
+
+# You should have received a copy of the GNU General Public License along 
+# with this program. If not, see <https://www.gnu.org/licenses/>.
+"""ROS2 node implementation for the language learning game.
+
+Subscribers:
+    - Game state and user answers from the graphical user interface
+      (GameEntryResult)
+
+Publishers:
+    - Game state and quiz questions for the game controller (GameEntry)
+    - Spoken feedback for the robot (std_msgs/String)
+
+Service Clients:
+    - RagLanguageGame
+        Requests personalized feedback from the Retrieval-Augmented
+        Generation (RAG) service.
+
+ROS Parameters:
+    - in_game_topic (str, default='/language_learning/game/gui/state')
+    - rag_service (str, default='/language_learning/rag/feedback')
+    - out_topic (str, default='/qt_robot/speech/say')
+    - pub_period (float, default=1.0)
+    - out_game_topic (str, default='/language_learning/game/controller/state')
+
+Description:
+    This ROS 2 node coordinates the language learning game by managing the
+    game state, publishing quiz questions to the game controller, and
+    receiving the student's answers from the graphical user interface.
+    For each submitted answer, the node sends a request to the
+    RagLanguageGame service to obtain personalized feedback. The returned
+    feedback is then published as text for the robot's speech synthesis
+    system. The node also tracks the student's progress and score
+    throughout the quiz.
+
+Author:
+    Oviya Rajavel <oviya.rajavel.inf.h-brs.de>
+    Michal Stolarz <michal.stolarz@h-brs.de>
+"""
 import rclpy
 from rclpy.node import Node
-from zat_games.quiz_config import quiz_question_lists
-from zat_ros2_msgs.srv import RagLanguageGame
-from zat_ros2_msgs.msg import GameEntry, GameAnswer, GameEntryResult
 from std_msgs.msg import String
+from zat_ros2_msgs.msg import GameAnswer, GameEntry, GameEntryResult
+from zat_ros2_msgs.srv import RagLanguageGame
 
+from zat_games.quiz_config import quiz_question_lists
 
 GAME_STATES = {1: 'IDLE', 2: 'PENDING', 3: 'STOP'}
 GAME_STATES_SYMB = {GAME_STATES[key]: key for key in GAME_STATES}
@@ -70,7 +119,7 @@ def json2msg_game_result(json_data):
     return msg
 
 
-class UserManager():
+class UserManager:
     """Manage quiz game state and track user answers from the UI."""
     def __init__(self, config):
         """Initialize the UserManager class."""
@@ -223,7 +272,7 @@ class LanguageLearning(Node):
             return
     
         q_id, question, answers, points, \
-        total_points, questions_num, game_state, question_list, selected_question_list, list_of_all_questions = self._user_manager.fetch_entry()
+        total_points, questions_num, game_state, _question_list, selected_question_list, list_of_all_questions = self._user_manager.fetch_entry()
         
         json_data = {
             'state': game_state,
