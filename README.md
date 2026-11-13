@@ -33,7 +33,7 @@ cd zat_ws/src
 ```
 ```
 # git clone the repository in src folder
-git clone https://git.inf.h-brs.de/zat-rhein-ruhr/zat-prototype-demo/zat_games.git
+git clone git@github.com:zat-mumos/zat_games.git
 ```
 
 ```
